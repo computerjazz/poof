@@ -9,22 +9,22 @@
 
 #include <Servo.h>
 
-Servo ccwServo;  // create servo object to control a servo
-Servo cwServo;
+Servo servo;  // create servo object to control a servo
 // twelve servo objects can be created on most boards
 
 int pos = 0;    // variable to store the servo position
 int BUTTON_PIN = 8;
 int LEDPIN = 13;
 int SENSOR_PIN = 4;
-int CW_SERVO_PIN = 9;
+int SERVO_PIN = 9;
 
 int sensorState = 0, lastState = 0;
 
 
 void setup() {
-   Serial.begin(9600);
-  cwServo.attach(CW_SERVO_PIN);  
+  Serial.begin(115200);
+  
+  servo.attach(SERVO_PIN);  
   pinMode(BUTTON_PIN, INPUT);
   pinMode(SENSOR_PIN, INPUT);     
   digitalWrite(BUTTON_PIN, LOW);
@@ -36,45 +36,27 @@ void setup() {
 }
 
 void loop() {
-
+  
   if (digitalRead(BUTTON_PIN) == HIGH) {
-    digitalWrite(LEDPIN, HIGH);  
-    Serial.println("BUTTON!");
     sweep();
-
-   } else {
-        digitalWrite(LEDPIN, LOW);  
-
-    }
-
-
-     // read the state of the pushbutton value:
-  sensorState = digitalRead(SENSOR_PIN);
-  //Serial.println(sensorState);
-  // check if the sensor beam is broken
-  // if it is, the sensorState is LOW:
-  if (sensorState == LOW) {     
-    // turn LED on:
-    //digitalWrite(LEDPIN, HIGH);  
-    //˜sweep();
-  } 
-  else {
-    // turn LED off:
-    // digitalWrite(LEDPIN, LOW); 
   }
   
+  sensorState = digitalRead(SENSOR_PIN);
+  
   if (sensorState && !lastState) {
-    Serial.println("Unbroken");
-  } 
-  if (!sensorState && lastState) {
-    Serial.println("Broken");
+    Serial.println("Unbroken!");
   }
-  lastState = sensorSta0te;
-
+  
+  if (!sensorState && lastState) {
+    Serial.println("Broken!");
+    sweep();
+  }
+  
+  lastState = sensorState;
 }
 
 void sweep() {
-    cwServo.writeMicroseconds(500);
+    servo.write(180);
     delay(1000);
-    cwServo.write(2500);
+    servo.write(0);
   }
