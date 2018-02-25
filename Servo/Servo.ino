@@ -1,62 +1,87 @@
-/* Sweep
- by BARRAGAN <http://barraganstudio.com>
- This example code is in the public domain.
-
- modified 8 Nov 2013
- by Scott Fitzgerald
- http://www.arduino.cc/en/Tutorial/Sweep
-*/
-
 #include <Servo.h>
 
-Servo servo;  // create servo object to control a servo
-// twelve servo objects can be created on most boards
-
-int pos = 0;    // variable to store the servo position
-int BUTTON_PIN = 8;
-int LEDPIN = 13;
-int SENSOR_PIN = 4;
+int SENSOR_PIN = A0;
+int LED_PIN = 13;
 int SERVO_PIN = 9;
 
-int sensorState = 0, lastState = 0;
+#define PREV_LEN 100
+#define CUR_LEN 20
+#define THRESHOLD 15
 
+Servo servo;
+
+int prevVals[PREV_LEN];
+int prevAvg;
+int curAvg;
+unsigned long timer;
+
+boolean broken = false;
 
 void setup() {
-  Serial.begin(115200);
-  
-  servo.attach(SERVO_PIN);  
-  pinMode(BUTTON_PIN, INPUT);
-  pinMode(SENSOR_PIN, INPUT);     
-  digitalWrite(BUTTON_PIN, LOW);
-  digitalWrite(SENSOR_PIN, HIGH); // turn on the pullup
-  pinMode(LEDPIN, OUTPUT);      
 
-  Serial.println("setup complete");
-  
+  pinMode(SENSOR_PIN, INPUT);
+  pinMode(LED_PIN, OUTPUT);
+
+  for (int i = 0; i < PREV_LEN; i++) {
+    prevVals[i] = 0;
+  }
+  servo.attach(SERVO_PIN);
+  servo.writeMicroseconds(1200);
+
+  Serial.begin(115200);
+
 }
 
 void loop() {
-  
-  if (digitalRead(BUTTON_PIN) == HIGH) {
-    sweep();
+  prevAvg = 0;
+  curAvg = 0;
+
+  for (int i = CUR_LEN; i < PREV_LEN; i++) {
+    prevAvg += prevVals[i];
   }
-  
-  sensorState = digitalRead(SENSOR_PIN);
-  
-  if (sensorState && !lastState) {
-    Serial.println("Unbroken!");
+  prevAvg = prevAvg / (PREV_LEN - CUR_LEN);
+
+  for (int i = 0; i < CUR_LEN; i++) {
+    curAvg += prevVals[i];
   }
-  
-  if (!sensorState && lastState) {
-    Serial.println("Broken!");
-    sweep();
+  curAvg = curAvg / CUR_LEN;
+
+  int sensorVal = analogRead(SENSOR_PIN);
+
+  int diff = prevAvg - curAvg;
+//  Serial.println(sensorVal);
+
+  if (diff > THRESHOLD && !broken) {
+    broken = true;
+    timer = millis();
+    // Cat broke the beam! Do something!
+    Serial.println("BROKEN!");
+  } else if (diff < -THRESHOLD && broken) {
+    Serial.println("UNBROKEN");
+    broken = false;
+    if (millis() - timer < 5000) {
+      Serial.println("POOF!");
+      sweep();
+    }
   }
-  
-  lastState = sensorState;
+
+  if (broken) {
+    digitalWrite(LED_PIN, HIGH);
+  } else {
+    digitalWrite(LED_PIN, LOW);
+ }
+
+  // shift array and add current value
+  for (int i = PREV_LEN - 1; i > 0; i--) {
+    prevVals[i] = prevVals[i - 1];
+  }
+  prevVals[0] = sensorVal;
+
+  delay(5);
 }
 
 void sweep() {
-    servo.write(180);
-    delay(1000);
-    servo.write(0);
-  }
+  servo.writeMicroseconds(1000);
+  delay(100);
+  servo.writeMicroseconds(1200);
+}
